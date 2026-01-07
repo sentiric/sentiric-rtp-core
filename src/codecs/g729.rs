@@ -2,14 +2,12 @@
 
 use super::Encoder;
 use std::ffi::c_void;
-use libc::{c_int, int16_t, uint8_t};
 
-// C Fonksiyonlarının Tanımları
+// C Fonksiyonlarının Tanımları (Rust Tipleriyle)
 extern "C" {
-    // bcg729/include/bcg729/encoder.h
-    fn initBcg729EncoderChannel(enableVAD: uint8_t) -> *mut c_void;
+    fn initBcg729EncoderChannel(enableVAD: u8) -> *mut c_void;
     fn closeBcg729EncoderChannel(context: *mut c_void);
-    fn bcg729Encoder(context: *mut c_void, inputFrame: *const int16_t, bitStream: *mut uint8_t, bitStreamLength: *mut uint8_t);
+    fn bcg729Encoder(context: *mut c_void, inputFrame: *const i16, bitStream: *mut u8, bitStreamLength: *mut u8);
 }
 
 pub struct G729 {
@@ -38,20 +36,18 @@ impl Drop for G729 {
     }
 }
 
-// Thread-safe olduğunu garanti etmeliyiz (Raw pointer taşıdığı için)
+// Thread-safe olduğunu garanti etmeliyiz
 unsafe impl Send for G729 {}
 
 impl Encoder for G729 {
     fn encode(&mut self, pcm_samples: &[i16]) -> Vec<u8> {
-        // G.729 frame boyutu: 80 sample (10ms)
-        // Çıktı: 10 byte
         let mut output = Vec::new();
         
-        // Gelen veriyi 80'lik bloklara böl
+        // G.729 frame boyutu: 80 sample (10ms)
         for chunk in pcm_samples.chunks(80) {
-            if chunk.len() != 80 { continue; } // Tam frame değilse atla (padding yapılabilir)
+            if chunk.len() != 80 { continue; }
 
-            let mut bitstream = [0u8; 10]; // G.729 output buffer (10 bytes)
+            let mut bitstream = [0u8; 10]; // G.729 output buffer
             let mut out_len: u8 = 0;
 
             unsafe {
