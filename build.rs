@@ -1,48 +1,54 @@
 use std::env;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn main() {
-    // Projenin kök dizinini al
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let root = PathBuf::from(manifest_dir);
+    let bcg729_path = root.join("deps/bcg729");
+    let bcg729_src = bcg729_path.join("src");
+    let bcg729_include = bcg729_path.join("include");
 
-    // bcg729 kaynak kodlarının yolu
-    let bcg729_src = root.join("deps/bcg729/src");
-    let bcg729_include = root.join("deps/bcg729/include");
-
-    // Kaynak kod klasörünün varlığını kontrol et (Build hatası vermeden önce uyar)
+    // 1. Submodule Kontrolü (Eğer boşsa init et)
     if !bcg729_src.exists() {
-        panic!("bcg729 kaynak kodları bulunamadı! 'deps/bcg729' klasörünün dolu olduğundan emin olun. (git submodule update --init --recursive)");
-    }
+        // Build sırasında uyarı ver ve indirmeyi dene
+        println!("cargo:warning=bcg729 submodule içeriği boş. İndiriliyor...");
+        let status = Command::new("git")
+            .args(&["submodule", "update", "--init", "--recursive"])
+            .current_dir(&root)
+            .status();
 
-    // C dosyalarını bul
-    let c_files = glob::glob(&format!("{}/*.c", bcg729_src.display()))
-        .expect("Failed to read glob pattern")
-        .filter_map(Result::ok);
-
-    let mut build = cc::Build::new();
-    
-    // Dosyaları ekle
-    let mut file_count = 0;
-    for file in c_files {
-        // Test dosyalarını hariç tut
-        if !file.to_string_lossy().contains("test") {
-            build.file(file);
-            file_count += 1;
+        if status.is_err() || !status.unwrap().success() {
+            panic!("KRİTİK HATA: 'deps/bcg729' submodule indirilemedi. Lütfen 'git submodule update --init --recursive' komutunu çalıştırın.");
         }
     }
 
-    if file_count == 0 {
-        panic!("Hiçbir C dosyası bulunamadı! Yol: {}", bcg729_src.display());
+    // 2. C Dosyalarını Bul
+    let c_files = glob::glob(&format!("{}/*.c", bcg729_src.display()))
+        .expect("Glob pattern hatası")
+        .filter_map(Result::ok)
+        .filter(|path| !path.to_string_lossy().contains("test")); // Test dosyalarını hariç tut
+
+    let mut build = cc::Build::new();
+    let mut file_count = 0;
+
+    for file in c_files {
+        build.file(file);
+        file_count += 1;
     }
 
-    // Derleme
+    if file_count == 0 {
+        panic!("HATA: bcg729 kaynak kodları bulunamadı! Yol: {}", bcg729_src.display());
+    }
+
+    // 3. Derleme (Static Linking)
     build
         .include(bcg729_include)
         .define("BCG729_STATIC", None)
-        .warnings(false)
-        .compile("g729"); // libg729.a üretir
+        .warnings(false) // C kütüphanesinin uyarılarını konsola basma
+        .compile("g729");
 
-    // Değişiklik izleme
-    println!("cargo:rerun-if-changed={}", bcg729_src.display());
+    // Linkleme
+    println!("cargo:rustc-link-lib=static=g729");
+    println!("cargo:rerun-if-changed=deps/bcg729");
 }

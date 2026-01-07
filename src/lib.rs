@@ -1,7 +1,8 @@
 pub mod rtp;
 pub mod codecs;
-pub mod wav; // EKLENDİ
+pub mod wav;
 
-pub use rtp::{RtpHeader, RtpPacket};
+// RTCPPacket'i de export ediyoruz
+pub use rtp::{RtpHeader, RtpPacket, RtcpPacket};
 pub use codecs::{Encoder, CodecType, G711, G729};
-pub use wav::WavAudio; // EKLENDİ
+pub use wav::WavAudio;

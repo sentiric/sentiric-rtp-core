@@ -1,2 +1,0 @@
-* Johan Pascal
-* Jehan Monnier

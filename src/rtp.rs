@@ -61,9 +61,8 @@ impl RtpPacket {
     }
 }
 
-// RTCP (Control Protocol) Temel Yapısı
-// Şimdilik sadece Sender Report (SR) için placeholder.
-// İleride tam implementasyon eklenebilir.
+// --- YENİ EKLENEN KISIM: RTCP STUB ---
+// QoS ve Stream takibi için gerekli minimum yapı
 pub struct RtcpPacket {
     pub version: u8,
     pub padding: bool,
@@ -79,13 +78,12 @@ impl RtcpPacket {
             version: 2,
             padding: false,
             count: 0,
-            packet_type: 200,
-            length: 6, // Words - 1
+            packet_type: 200, // Sender Report
+            length: 6, // Header only stub
             ssrc,
         }
     }
     
-    // RTCP paketini byte dizisine çevir
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         let b0 = (self.version << 6) | ((self.padding as u8) << 5) | (self.count & 0x1F);
@@ -93,8 +91,8 @@ impl RtcpPacket {
         bytes.push(self.packet_type);
         bytes.extend_from_slice(&self.length.to_be_bytes());
         bytes.extend_from_slice(&self.ssrc.to_be_bytes());
-        // NTP, RTP timestamp, packet count, octet count alanları buraya eklenmeli
-        // Şimdilik stub olarak bırakıyoruz.
+        // Gerçek implementasyonda burada NTP timestamp, RTP timestamp vb. olmalı.
+        // Şimdilik bağlantıyı canlı tutmak için yeterli.
         bytes
     }
 }
