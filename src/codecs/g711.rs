@@ -11,11 +11,10 @@ impl G711 {
         G711 { codec_type }
     }
 
-    /// SPANDSP A-Law Encoder (Final Clean Version)
+    /// SPANDSP A-Law Encoder (Final Warning Fix)
     fn linear_to_alaw(pcm_val: i16) -> u8 {
         let mask = 0x55;
-        // i32 ile güvenli hesaplama
-        let mut pcm = pcm_val as i32;
+        let mut pcm: i32 = pcm_val as i32;
 
         let sign = if pcm >= 0 {
             0xD5
@@ -36,25 +35,26 @@ impl G711 {
         } else {
             let mut seg = 1;
             let mut check = pcm >> 8;
+            
             if check >= 16 { check >>= 4; seg += 4; }
             if check >= 4  { check >>= 2; seg += 2; }
             if check >= 2  { seg += 1; }
+            
             exponent = seg;
             mantissa = (pcm >> (exponent + 4)) & 0x0F;
         }
 
-        // DÜZELTME: Gereksiz parantezler kaldırıldı
+        // DÜZELTME: Gereksiz parantezler kalktı
         let alaw_byte = sign | ((exponent << 4) as u8) | (mantissa as u8);
         alaw_byte ^ mask
     }
 
-    /// SPANDSP u-Law Encoder
     fn linear_to_ulaw(pcm_val: i16) -> u8 {
         let bias = 0x84;
         let clip = 32635;
         let sign = if pcm_val < 0 { 0x80 } else { 0x00 };
         
-        let mut pcm = pcm_val as i32;
+        let mut pcm: i32 = pcm_val as i32;
         if pcm < 0 { pcm = -pcm; }
         if pcm > clip { pcm = clip; }
         
@@ -70,31 +70,34 @@ impl G711 {
         else { 7 };
 
         let mantissa = (pcm >> (exponent + 3)) & 0x0F;
-        // u-Law mantığında ! (NOT) operatörü tüm ifadeyi kapsar, parantez gereklidir.
+        // Burada parantez gerekli (Mantıksal öncelik)
         let ulaw_byte = !(sign | ((exponent as u8) << 4) | (mantissa as u8));
-        
         ulaw_byte
     }
 }
 
 impl Encoder for G711 {
+    fn get_type(&self) -> CodecType {
+        self.codec_type
+    }
+
     fn encode(&mut self, pcm_samples: &[i16]) -> Vec<u8> {
         match self.codec_type {
             CodecType::PCMA => {
                 pcm_samples.iter()
                     .map(|&sample| {
-                        // VOLÜM KONTROLÜ: %50
-                        // Bu ayar sesin patlamasını engeller.
-                        let soft_sample = (sample as f32 * 0.50) as i16;
-                        Self::linear_to_alaw(soft_sample)
+                        let val = (sample as f32 * 0.50) as i32;
+                        let clamped = if val > 32767 { 32767 } else if val < -32768 { -32768 } else { val };
+                        Self::linear_to_alaw(clamped as i16)
                     })
                     .collect()
             },
             CodecType::PCMU => {
                 pcm_samples.iter()
                     .map(|&sample| {
-                        let soft_sample = (sample as f32 * 0.50) as i16;
-                        Self::linear_to_ulaw(soft_sample)
+                        let val = (sample as f32 * 0.50) as i32;
+                        let clamped = if val > 32767 { 32767 } else if val < -32768 { -32768 } else { val };
+                        Self::linear_to_ulaw(clamped as i16)
                     })
                     .collect()
             },
