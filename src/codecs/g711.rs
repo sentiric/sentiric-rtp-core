@@ -12,7 +12,8 @@ impl G711 {
     }
 
     /// SPANDSP A-Law Encoder (Final Warning Fix)
-    fn linear_to_alaw(pcm_val: i16) -> u8 {
+    /// Public hale getirildi: G.722 simülasyonu veya diğer araçlar kullanabilir.
+    pub fn linear_to_alaw(pcm_val: i16) -> u8 {
         let mask = 0x55;
         let mut pcm: i32 = pcm_val as i32;
 
@@ -44,12 +45,12 @@ impl G711 {
             mantissa = (pcm >> (exponent + 4)) & 0x0F;
         }
 
-        // DÜZELTME: Gereksiz parantezler kalktı
         let alaw_byte = sign | ((exponent << 4) as u8) | (mantissa as u8);
         alaw_byte ^ mask
     }
 
-    fn linear_to_ulaw(pcm_val: i16) -> u8 {
+    /// Public hale getirildi: G.722 simülasyonu için gerekli.
+    pub fn linear_to_ulaw(pcm_val: i16) -> u8 {
         let bias = 0x84;
         let clip = 32635;
         let sign = if pcm_val < 0 { 0x80 } else { 0x00 };
@@ -70,7 +71,6 @@ impl G711 {
         else { 7 };
 
         let mantissa = (pcm >> (exponent + 3)) & 0x0F;
-        // Burada parantez gerekli (Mantıksal öncelik)
         let ulaw_byte = !(sign | ((exponent as u8) << 4) | (mantissa as u8));
         ulaw_byte
     }
