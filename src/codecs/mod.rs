@@ -2,10 +2,11 @@
 
 pub mod g711;
 pub mod g729;
+pub mod g722; // EKLENDİ
 
-// KRİTİK DÜZELTME: Alt modülleri dışarıya açıyoruz
 pub use g711::G711;
 pub use g729::G729;
+pub use g722::G722; // EKLENDİ
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CodecType {
@@ -19,7 +20,7 @@ impl CodecType {
     pub fn sample_rate(&self) -> u32 {
         match self {
             CodecType::PCMU | CodecType::PCMA | CodecType::G729 => 8000,
-            CodecType::G722 => 16000,
+            CodecType::G722 => 16000, // HD Voice
         }
     }
 
@@ -34,13 +35,11 @@ impl CodecType {
     }
 }
 
-/// Tüm codec'lerin uyması gereken Ortak Arayüz
 pub trait Encoder: Send {
     fn encode(&mut self, pcm_samples: &[i16]) -> Vec<u8>;
     fn get_type(&self) -> CodecType;
 }
 
-// Codec Fabrikası
 pub struct CodecFactory;
 
 impl CodecFactory {
@@ -49,7 +48,7 @@ impl CodecFactory {
             CodecType::PCMA => Box::new(G711::new(CodecType::PCMA)),
             CodecType::PCMU => Box::new(G711::new(CodecType::PCMU)),
             CodecType::G729 => Box::new(G729::new()),
-            CodecType::G722 => panic!("G.722 henüz implemente edilmedi!"),
+            CodecType::G722 => Box::new(G722::new()), // ARTIK PANIC YOK, AKTİF!
         }
     }
 }
