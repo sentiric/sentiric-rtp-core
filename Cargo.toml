@@ -1,8 +1,10 @@
 [package]
 name = "sentiric-rtp-core"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-description = "RTP packetization and Audio Codec (G.711/G.729) wrapper."
+description = "RTP packetization and Audio Codec (G.711/G.729) wrapper. Production Stable."
+authors = ["Sentiric Team"]
+license = "AGPL-3.0"
 
 [dependencies]
 # Runtime için sadece libc (C tipleri için)
