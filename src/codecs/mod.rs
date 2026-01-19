@@ -2,11 +2,11 @@
 
 pub mod g711;
 pub mod g729;
-pub mod g722; // EKLENDİ
+pub mod g722;
 
 pub use g711::G711;
-pub use g729::G729;
-pub use g722::G722; // EKLENDİ
+pub use g729::{G729Encoder, G729Decoder};
+pub use g722::G722;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CodecType {
@@ -20,7 +20,7 @@ impl CodecType {
     pub fn sample_rate(&self) -> u32 {
         match self {
             CodecType::PCMU | CodecType::PCMA | CodecType::G729 => 8000,
-            CodecType::G722 => 16000, // HD Voice
+            CodecType::G722 => 16000,
         }
     }
 
@@ -40,6 +40,11 @@ pub trait Encoder: Send {
     fn get_type(&self) -> CodecType;
 }
 
+pub trait Decoder: Send {
+    fn decode(&mut self, payload: &[u8]) -> Vec<i16>;
+    fn get_type(&self) -> CodecType;
+}
+
 pub struct CodecFactory;
 
 impl CodecFactory {
@@ -47,8 +52,17 @@ impl CodecFactory {
         match codec {
             CodecType::PCMA => Box::new(G711::new(CodecType::PCMA)),
             CodecType::PCMU => Box::new(G711::new(CodecType::PCMU)),
-            CodecType::G729 => Box::new(G729::new()),
-            CodecType::G722 => Box::new(G722::new()), // ARTIK PANIC YOK, AKTİF!
+            CodecType::G729 => Box::new(G729Encoder::new()),
+            CodecType::G722 => Box::new(G722::new()),
+        }
+    }
+
+    pub fn create_decoder(codec: CodecType) -> Box<dyn Decoder> {
+        match codec {
+            CodecType::PCMA => Box::new(G711::new(CodecType::PCMA)),
+            CodecType::PCMU => Box::new(G711::new(CodecType::PCMU)),
+            CodecType::G729 => Box::new(G729Decoder::new()),
+            CodecType::G722 => Box::new(G722::new()),
         }
     }
 }

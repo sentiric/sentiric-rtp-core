@@ -5,6 +5,9 @@ pub mod codecs;
 pub mod wav;
 
 pub use rtp::{RtpHeader, RtpPacket, RtcpPacket};
-// CodecFactory eklendi
-pub use codecs::{Encoder, CodecType, CodecFactory, G711, G729};
+// Export listesi güncellendi: G729 yerine Encoder/Decoder ayrımı
+pub use codecs::{
+    Encoder, Decoder, CodecType, CodecFactory, 
+    G711, G729Encoder, G729Decoder, G722
+};
 pub use wav::WavAudio;
