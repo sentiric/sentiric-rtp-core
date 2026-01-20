@@ -12,43 +12,15 @@ impl G711 {
     }
 
     // --- ENCODING (Linear -> A-law) ---
-    // ITU-T G.711 A-law encoding algorithm (Sun Microsystems implementation reference)
+    // ITU-T G.711 A-law encoding algorithm (Clean Implementation)
     pub fn linear_to_alaw(pcm_val: i16) -> u8 {
-        let mask = 0xD5;
-        let mut pcm = pcm_val >> 4; // 16-bit -> 12-bit
-        let sign = if pcm < 0 {
-            pcm = -pcm - 1;
-            0x00
-        } else {
-            0x80
-        };
-
-        if pcm > 2047 { pcm = 2047; } // Clip
-
-        let val = if pcm < 32 {
-            (pcm << 4) + 15 // Bu segmentte gürültüyü azaltmak için ince ayar
-        } else if pcm < 64 {
-            ((pcm - 32) << 4) + 15
-        } else if pcm < 128 {
-            0x80 + ((pcm - 64) << 2)
-        } else if pcm < 256 {
-            0x90 + ((pcm - 128) << 1)
-        } else if pcm < 512 {
-            0xA0 + (pcm - 256)
-        } else if pcm < 1024 {
-            0xB0 + ((pcm - 512) >> 1)
-        } else if pcm < 2048 {
-            0xC0 + ((pcm - 1024) >> 2)
-        } else {
-            0xD0 + ((pcm - 2048) >> 3)
-        };
-        
-        // Yukarıdaki mantık yerine endüstri standardı segment tablosu daha güvenilirdir.
-        // Ancak encoding için en temiz yöntem aşağıdaki segment mantığıdır:
-        
-        let pcm_val = pcm_val;
         let sign = if pcm_val < 0 { 0x00 } else { 0x80 }; // A-law sign bit inverse
-        let mut abs = if pcm_val < 0 { (!pcm_val) as u16 } else { pcm_val as u16 }; // 1's complement approximation
+        let mut abs = if pcm_val < 0 { 
+            // -32768 edge case handling
+            if pcm_val == i16::MIN { 32767 } else { -pcm_val as u16 }
+        } else { 
+            pcm_val as u16 
+        };
         
         if abs > 32767 { abs = 32767; }
 
@@ -86,8 +58,6 @@ impl G711 {
     }
 
     // --- DECODING (A-law -> Linear) ---
-    // Cızırtıyı önleyen asıl yer burasıdır.
-    // Hesaplama yerine sabit tablo (LUT) kullanıyoruz.
     pub fn alaw_to_linear(alaw_val: u8) -> i16 {
         ALAW_TO_LINEAR_LUT[alaw_val as usize]
     }
@@ -96,7 +66,11 @@ impl G711 {
     pub fn linear_to_ulaw(pcm_val: i16) -> u8 {
         let bias = 0x84;
         let sign = if pcm_val < 0 { 0x80 } else { 0x00 };
-        let mut abs = if pcm_val < 0 { (!pcm_val) as u16 } else { pcm_val as u16 }; // approx
+        let mut abs = if pcm_val < 0 { 
+            if pcm_val == i16::MIN { 32767 } else { -pcm_val as u16 }
+        } else { 
+            pcm_val as u16 
+        };
         
         if abs > 32635 { abs = 32635; }
         abs = abs.wrapping_add(bias as u16);
@@ -145,7 +119,6 @@ impl Decoder for G711 {
 
 // ============================================================================
 // STANDARD ITU-T G.711 LOOKUP TABLES
-// These tables guarantee 100% standard compliance and zero calculation noise.
 // ============================================================================
 
 static ALAW_TO_LINEAR_LUT: [i16; 256] = [

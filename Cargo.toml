@@ -1,14 +1,18 @@
 [package]
 name = "sentiric-rtp-core"
-version = "1.1.0"  # <--- BUMP
+version = "1.2.0"
 edition = "2021"
-description = "RTP packetization and Audio Codec (G.711/G.729) wrapper. Production Stable."
+description = "RTP packetization, Audio Codec (G.711/G.729) and Real-time Session Core."
 authors = ["Sentiric Team"]
 license = "AGPL-3.0"
 
 [dependencies]
-# Runtime için sadece libc (C tipleri için)
+# Runtime için C tipleri (G.729 wrapper için)
 libc = "0.2"
+
+# Zamanlama ve Loglama için
+tokio = { version = "1", features = ["sync", "time"] }
+tracing = "0.1"
 
 [build-dependencies]
 # Derleme anında C kodlarını derlemek için
