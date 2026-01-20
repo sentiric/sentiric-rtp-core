@@ -3,7 +3,7 @@
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tracing::{info, warn};
-use crate::net_utils::{is_private_ip, is_public_ip};
+// use crate::net_utils::{is_private_ip, is_public_ip}; // ARTIK GEREK YOK
 
 #[derive(Debug, Clone)]
 pub struct RtpEndpoint {
@@ -21,38 +21,35 @@ impl RtpEndpoint {
         }
     }
 
-    /// Akıllı Latching Mantığı
+    /// Latching Mantığı (DÜZELTİLDİ: Docker Dostu)
     pub fn latch(&self, source_addr: SocketAddr) -> bool {
         let mut latched_guard = self.is_latched.lock().unwrap();
         let mut target_guard = self.target_addr.lock().unwrap();
 
-        // 1. Durum: Zaten kilitliysek ve kaynak değişmediyse çık.
+        // 1. Zaten aynı adrese kilitliysek çık.
         if *latched_guard && *target_guard == Some(source_addr) {
             return false;
         }
 
-        // 2. Durum: SMART FILTERING (Kritik Düzeltme)
-        // Eğer başlangıç hedefimiz (SDP'den gelen) bir Public IP ise,
-        // ve gelen paket bir Private IP'den (Docker Gateway, LAN vb.) geliyorsa,
-        // bu pakete kilitlenmek yanlıştır. Muhtemelen NAT/Docker maskelemesidir.
-        // Bu durumda SDP'ye sadık kalırız.
-        if let Some(init) = self.initial_addr {
-            if is_public_ip(init.ip()) && is_private_ip(source_addr.ip()) {
-                // Log kirliliği yapmamak için sadece ilk seferde veya nadiren uyarabiliriz
-                // Şimdilik sessizce görmezden geliyoruz ki doğru hedefe (Public) atmaya devam etsin.
-                return false;
-            }
-        }
+        // --- İPTAL EDİLEN FİLTRE ---
+        // Docker Bridge ağında dış paketler Gateway IP'si (10.x veya 172.x) ile görünür.
+        // Bu yüzden Private IP'leri engellemek, Docker'da Latching'i bozar.
+        // Artık gelen her paketi geçerli kabul ediyoruz.
+        // ---------------------------
 
-        // 3. Durum: Latching Uygula
+        // 2. Durum: Latching Uygula ve Logla
         if let Some(init) = self.initial_addr {
-            if init != source_addr && !*latched_guard {
-                info!("🔄 NAT LATCH: SDP ({}) != Socket ({}). Hedef güncellendi.", init, source_addr);
-            } else if *latched_guard {
-                 info!("🔄 MOBİL ROAMING: Hedef güncellendi -> {}", source_addr);
+            if init != source_addr {
+                if !*latched_guard {
+                    info!("🔄 NAT LATCH: SDP ({}) != Socket ({}). Hedef güncellendi.", init, source_addr);
+                } else {
+                     info!("🔄 MOBİL ROAMING: Hedef güncellendi -> {}", source_addr);
+                }
+            } else if !*latched_guard {
+                 info!("✅ İLK HEDEF: Hedef kilitlendi -> {}", source_addr);
             }
         } else if !*latched_guard {
-             info!("✅ İLK HEDEF: Hedef kilitlendi -> {}", source_addr);
+             info!("✅ İLK HEDEF (SDP Yok): Hedef kilitlendi -> {}", source_addr);
         }
 
         *target_guard = Some(source_addr);
