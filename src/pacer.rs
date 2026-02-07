@@ -3,61 +3,46 @@
 use std::thread;
 use std::time::{Duration, Instant};
 
-/// HybridPacer, RTP paketlerinin gönderim zamanlamasını hassas bir şekilde yönetir.
-///
-/// Standart işletim sistemi `sleep` fonksiyonları 10-15ms hata payına sahip olabilir.
-/// Bu yapı, sürenin büyük kısmını `sleep` ile (CPU'yu yormadan),
-/// son 2ms'lik kısmını `spin_loop` ile (CPU'yu aktif kullanarak) bekler.
-///
-/// Sonuç: <1ms Jitter, Kristal netliğinde ses.
+/// HybridPacer: Nano-saniye hassasiyetinde RTP zamanlaması sağlar.
+/// 'Sleep' ile CPU'yu korur, 'Spin' ile zamanlamayı yakalar.
 pub struct Pacer {
     interval: Duration,
     next_tick: Instant,
 }
 
 impl Pacer {
-    /// Yeni bir Pacer oluşturur.
-    /// frame_duration: Genellikle 20ms (0.02s)
-    pub fn new(frame_duration: Duration) -> Self {
-        Pacer {
-            interval: frame_duration,
+    pub fn new(frame_duration_ms: u64) -> Self {
+        Self {
+            interval: Duration::from_millis(frame_duration_ms),
             next_tick: Instant::now(),
         }
     }
 
-    /// Bir sonraki kare zamanına kadar bekler.
-    /// Bu fonksiyon BLOKLAYICIDIR (Blocking).
-    /// Gerçek zamanlı ses thread'inde çalıştırılmalıdır.
     #[inline(always)]
     pub fn wait(&mut self) {
         let now = Instant::now();
         
-        // Eğer zaman geride kaldıysa (gecikme varsa), bekleme yapma, hemen dön.
-        // Ancak next_tick'i güncelle ki bir sonraki paketi yakalamaya çalışsın.
         if now >= self.next_tick {
-            self.next_tick += self.interval;
+            // Eğer gecikme varsa, bir sonraki hedefi şimdiye göre ayarla
+            self.next_tick = now + self.interval;
             return;
         }
 
         let remaining = self.next_tick - now;
 
-        // 1. Aşama: Kaba Bekleme (Coarse Wait) - CPU Dostu
-        // Eğer 2ms'den fazla varsa işletim sistemine bırak.
+        // 1. Kaba Bekleme: Eğer 2ms'den fazla varsa OS'e bırak
         if remaining > Duration::from_millis(2) {
             thread::sleep(remaining - Duration::from_millis(2));
         }
 
-        // 2. Aşama: Hassas Bekleme (Busy Wait) - Düşük Latency
-        // Kalan süreyi döngüde yakarak tam zamanında çıkış yap.
+        // 2. Hassas Bekleme: Son mikrosaniyeleri yakmak için busy-wait
         while Instant::now() < self.next_tick {
             std::hint::spin_loop();
         }
 
-        // Bir sonraki hedefi belirle
         self.next_tick += self.interval;
     }
 
-    /// Pacer'ı sıfırlar (Örn: Yayın durup tekrar başladığında).
     pub fn reset(&mut self) {
         self.next_tick = Instant::now();
     }

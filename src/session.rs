@@ -2,69 +2,54 @@
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use tracing::{info, warn};
-// use crate::net_utils::{is_private_ip, is_public_ip}; // ARTIK GEREK YOK
+use tracing::{info, debug};
 
+/// RtpEndpoint: Dinamik hedef kilitlenme mantığı (Symmetric RTP).
 #[derive(Debug, Clone)]
 pub struct RtpEndpoint {
     target_addr: Arc<Mutex<Option<SocketAddr>>>,
-    initial_addr: Option<SocketAddr>,
     is_latched: Arc<Mutex<bool>>,
 }
 
 impl RtpEndpoint {
     pub fn new(initial_target: Option<SocketAddr>) -> Self {
-        RtpEndpoint {
+        Self {
             target_addr: Arc::new(Mutex::new(initial_target)),
-            initial_addr: initial_target,
             is_latched: Arc::new(Mutex::new(false)),
         }
     }
 
-    /// Latching Mantığı (DÜZELTİLDİ: Docker Dostu)
+    /// Gelen paketin adresine kilitlenir. 
+    /// Docker ve NAT senaryolarında Master otoritedir.
     pub fn latch(&self, source_addr: SocketAddr) -> bool {
-        let mut latched_guard = self.is_latched.lock().unwrap();
-        let mut target_guard = self.target_addr.lock().unwrap();
+        let mut latched = self.is_latched.lock().unwrap();
+        let mut target = self.target_addr.lock().unwrap();
 
-        // 1. Zaten aynı adrese kilitliysek çık.
-        if *latched_guard && *target_guard == Some(source_addr) {
+        // Zaten aynı adrese kilitliysek bir şey yapma
+        if *latched && *target == Some(source_addr) {
             return false;
         }
 
-        // --- İPTAL EDİLEN FİLTRE ---
-        // Docker Bridge ağında dış paketler Gateway IP'si (10.x veya 172.x) ile görünür.
-        // Bu yüzden Private IP'leri engellemek, Docker'da Latching'i bozar.
-        // Artık gelen her paketi geçerli kabul ediyoruz.
-        // ---------------------------
-
-        // 2. Durum: Latching Uygula ve Logla
-        if let Some(init) = self.initial_addr {
-            if init != source_addr {
-                if !*latched_guard {
-                    info!("🔄 NAT LATCH: SDP ({}) != Socket ({}). Hedef güncellendi.", init, source_addr);
-                } else {
-                     info!("🔄 MOBİL ROAMING: Hedef güncellendi -> {}", source_addr);
-                }
-            } else if !*latched_guard {
-                 info!("✅ İLK HEDEF: Hedef kilitlendi -> {}", source_addr);
-            }
-        } else if !*latched_guard {
-             info!("✅ İLK HEDEF (SDP Yok): Hedef kilitlendi -> {}", source_addr);
+        // Kilitlenme (Latching)
+        if !*latched {
+            info!("🔒 [LATCH] Medya hedefi kilitlendi: {}", source_addr);
+        } else {
+            debug!("🔄 [ROAMING] Medya hedefi güncellendi: {}", source_addr);
         }
 
-        *target_guard = Some(source_addr);
-        *latched_guard = true;
-        return true;
+        *target = Some(source_addr);
+        *latched = true;
+        true
     }
 
     pub fn get_target(&self) -> Option<SocketAddr> {
         *self.target_addr.lock().unwrap()
     }
-    
+
     pub fn reset(&self) {
-        let mut target_guard = self.target_addr.lock().unwrap();
-        *target_guard = self.initial_addr;
-        *self.is_latched.lock().unwrap() = false;
-        warn!("⚠️ RTP Hedefi sıfırlandı (Reset).");
+        let mut latched = self.is_latched.lock().unwrap();
+        let mut target = self.target_addr.lock().unwrap();
+        *target = None;
+        *latched = false;
     }
 }
