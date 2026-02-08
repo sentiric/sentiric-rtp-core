@@ -1,40 +1,66 @@
 // src/codecs/pcma.rs
 
 use super::{Encoder, Decoder, CodecType};
-use super::codec_data::ALAW_TO_LINEAR_LUT; // İsimlendirme doğru
+use super::codec_data::ALAW_TO_LINEAR_LUT;
 
 pub struct PcmaEncoder;
 pub struct PcmaDecoder;
 
 impl PcmaEncoder {
-    // ITU-T G.191 Referans Kodu (TİP HATALARI KESİN OLARAK GİDERİLDİ)
+    // A-LAW ENCODER (Bitwise Shift Yöntemi - KESİN ÇÖZÜM)
+    // 16-bit PCM'i 12-bit A-law aralığına oturtmanın en temiz yolu.
     pub fn linear_to_alaw(pcm_val: i16) -> u8 {
-        let sign = (pcm_val >> 8) & 0x80;
-        let mut mag = if pcm_val < 0 { -pcm_val } else { pcm_val };
+        let mut pcm = pcm_val as i32;
+        let mask;
 
-        mag >>= 3;
-        if mag > 0xFFF { mag = 0xFFF; } // 12-bit max
-
-        let segment: i32; // Segment i32 olarak doğru
-        if mag < 32 { segment = 0; }
-        else if mag < 64 { segment = 1; }
-        else if mag < 128 { segment = 2; }
-        else if mag < 256 { segment = 3; }
-        else if mag < 512 { segment = 4; }
-        else if mag < 1024 { segment = 5; }
-        else if mag < 2048 { segment = 6; }
-        else { segment = 7; }
-
-        // DÜZELTME: mantissa hesaplamasının sonucu açıkça i32'ye dönüştürüldü.
-        // Bu, derleyicinin yanlış tip çıkarımını engeller.
-        let mantissa: i32 = if segment < 2 {
-            ((mag >> 1) & 0x0F) as i32 
+        // 1. İşaret Bitini Yönet (A-law: Pozitif=0xD5, Negatif=0x55)
+        if pcm >= 0 {
+            mask = 0xD5;
         } else {
-            ((mag >> segment) & 0x0F) as i32
-        };
-        
-        let result = (sign as i32 | (segment << 4) | mantissa) as u8; // mantissa şimdi i32
-        result ^ 0x55
+            mask = 0x55;
+            pcm = -pcm - 8; // Negatif offset
+        }
+
+        // 2. Sınırla ve Ölçekle (16-bit -> 12-bit)
+        // 16-bit veriyi sağa 4 bit kaydırarak 12-bit (0..4095) aralığına indiriyoruz.
+        // Bu işlem, önceki kodlardaki karmaşık matematik hatalarını ortadan kaldırır.
+        let val = pcm >> 4;
+        let mut effective = if val < 0 { 0 } else { val };
+        if effective > 0xFFF { effective = 0xFFF; } // 12-bit max
+
+        // 3. Segment Bulma (G.711 Standart Tablosu)
+        let segment: i32;
+        let mantissa: i32;
+
+        if effective < 32 {
+            segment = 0;
+            mantissa = (effective >> 1) & 0x0F;
+        } else if effective < 64 {
+            segment = 1;
+            mantissa = (effective >> 2) & 0x0F;
+        } else if effective < 128 {
+            segment = 2;
+            mantissa = (effective >> 3) & 0x0F;
+        } else if effective < 256 {
+            segment = 3;
+            mantissa = (effective >> 4) & 0x0F;
+        } else if effective < 512 {
+            segment = 4;
+            mantissa = (effective >> 5) & 0x0F;
+        } else if effective < 1024 {
+            segment = 5;
+            mantissa = (effective >> 6) & 0x0F;
+        } else if effective < 2048 {
+            segment = 6;
+            mantissa = (effective >> 7) & 0x0F;
+        } else {
+            segment = 7;
+            mantissa = (effective >> 8) & 0x0F;
+        }
+
+        // 4. Birleştir ve Maskele
+        let result = ((segment << 4) | mantissa) as u8;
+        result ^ mask
     }
 }
 
