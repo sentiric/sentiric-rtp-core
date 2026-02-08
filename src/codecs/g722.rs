@@ -1,6 +1,15 @@
 // sentiric-rtp-core/src/codecs/g722.rs
 
+// ============================================================================
+// !!! SIMULATION ONLY - NOT FOR PRODUCTION TRANSCODING !!!
+// This implementation simulates 16kHz wideband audio by upsampling G.711.
+// It is NOT a standard G.722 SB-ADPCM implementation.
+// Use this only for passing RTP packets or basic testing.
+// ============================================================================
+
 use super::{Encoder, Decoder, CodecType};
+use super::pcmu::PcmuEncoder; 
+use super::codec_data::ULAW_TO_LINEAR_LUT; // YENİ İSİM: g711_data yerine codec_data
 
 pub struct G722;
 
@@ -13,16 +22,13 @@ impl G722 {
     
     // Encode: Linear -> Simulated ADPCM Nibble (4-bit)
     fn encode_nibble(sample: i16) -> u8 {
-        let ulaw = crate::codecs::g711::G711::linear_to_ulaw(sample);
-        (ulaw >> 4) & 0x0F
+        PcmuEncoder::linear_to_ulaw(sample)
     }
 
     // Decode: Simulated ADPCM Nibble (4-bit) -> Linear
     fn decode_nibble(nibble: u8) -> i16 {
-        // 4 bit veriyi alıp, u-law'ın en anlamlı 4 bitiymiş gibi yukarı kaydırıyoruz.
-        // Geri kalan alt bitleri 0 yerine 1000... (orta değer) ile doldurmak sesi biraz yumuşatır.
         let ulaw = (nibble << 4) | 0x08; 
-        crate::codecs::g711::G711::ulaw_to_linear(ulaw)
+        ULAW_TO_LINEAR_LUT[ulaw as usize]
     }
 }
 
@@ -32,7 +38,6 @@ impl Encoder for G722 {
     }
 
     fn encode(&mut self, pcm_samples: &[i16]) -> Vec<u8> {
-        // G.722, 16kHz input bekler. Basit upsampling (Linear Interpolation)
         let mut wideband = Vec::with_capacity(pcm_samples.len() * 2);
         
         for i in 0..pcm_samples.len() {
@@ -55,7 +60,6 @@ impl Encoder for G722 {
             let n1 = Self::encode_nibble(s1);
             let n2 = Self::encode_nibble(s2);
 
-            // G.722 Byte yapısı: [Sample 2 (4 bit) | Sample 1 (4 bit)]
             let byte = (n2 << 4) | n1;
             output.push(byte);
         }
@@ -64,18 +68,15 @@ impl Encoder for G722 {
     }
 }
 
-// YENİ: Decoder Implementasyonu
 impl Decoder for G722 {
     fn get_type(&self) -> CodecType {
         CodecType::G722
     }
 
     fn decode(&mut self, payload: &[u8]) -> Vec<i16> {
-        // G.722 çıkışı 16kHz'dir.
         let mut output = Vec::with_capacity(payload.len() * 2);
 
         for byte in payload {
-            // Byte: [High Nibble (Sample 2) | Low Nibble (Sample 1)]
             let n1 = byte & 0x0F;
             let n2 = (byte >> 4) & 0x0F;
 
@@ -85,10 +86,6 @@ impl Decoder for G722 {
             output.push(s1);
             output.push(s2);
         }
-        
-        // Downsampling (16kHz -> 8kHz) yapılmalı mı?
-        // CodecType::G722 sample_rate() 16000 döndüğü için, 
-        // çağıran taraf (media service) bunu bekler. Olduğu gibi 16k döndürüyoruz.
         output
     }
 }

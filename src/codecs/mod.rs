@@ -1,12 +1,15 @@
 // sentiric-rtp-core/src/codecs/mod.rs
 
-pub mod g711;
+pub mod codec_data; // YENİ İSİM: g711_data yerine codec_data
 pub mod g729;
 pub mod g722;
+pub mod pcma;
+pub mod pcmu;
 
-pub use g711::G711;
 pub use g729::{G729Encoder, G729Decoder};
 pub use g722::G722;
+pub use pcma::{PcmaEncoder, PcmaDecoder};
+pub use pcmu::{PcmuEncoder, PcmuDecoder};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CodecType {
@@ -50,8 +53,8 @@ pub struct CodecFactory;
 impl CodecFactory {
     pub fn create_encoder(codec: CodecType) -> Box<dyn Encoder> {
         match codec {
-            CodecType::PCMA => Box::new(G711::new(CodecType::PCMA)),
-            CodecType::PCMU => Box::new(G711::new(CodecType::PCMU)),
+            CodecType::PCMA => Box::new(PcmaEncoder{}),
+            CodecType::PCMU => Box::new(PcmuEncoder{}),
             CodecType::G729 => Box::new(G729Encoder::new()),
             CodecType::G722 => Box::new(G722::new()),
         }
@@ -59,8 +62,8 @@ impl CodecFactory {
 
     pub fn create_decoder(codec: CodecType) -> Box<dyn Decoder> {
         match codec {
-            CodecType::PCMA => Box::new(G711::new(CodecType::PCMA)),
-            CodecType::PCMU => Box::new(G711::new(CodecType::PCMU)),
+            CodecType::PCMA => Box::new(PcmaDecoder{}),
+            CodecType::PCMU => Box::new(PcmuDecoder{}),
             CodecType::G729 => Box::new(G729Decoder::new()),
             CodecType::G722 => Box::new(G722::new()),
         }
