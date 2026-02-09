@@ -51,19 +51,15 @@ pub trait Decoder: Send {
 pub struct CodecFactory;
 
 impl CodecFactory {
-    /// [v1.3.3]: Stabil Kodek Yönetimi.
-    /// Sadece G.729 ve PCMU üretim ortamı için aktiftir.
+    /// [v1.3.4 MİMARİ DÜZELTME]: Eksik PCMA (Alaw) desteği geri eklendi.
+    /// Tüm varyantlar kapsandığı için 'unreachable pattern' uyarısını önlemek adına 
+    /// default (_) bloğu kaldırıldı.
     pub fn create_encoder(codec: CodecType) -> Box<dyn Encoder> {
         match codec {
             CodecType::G729 => Box::new(G729Encoder::new()),
             CodecType::PCMU => Box::new(PcmuEncoder {}),
-            
-            // Diğerleri için hata basıp G.729'a düşüyoruz.
-            // Bu, "Fail-Silent" değil "Fail-Safe" bir yaklaşımdır.
-            _ => {
-                tracing::error!("❌ [RTP] Unsupported/Unstable Encoder requested: {:?}. Fallback to G.729.", codec);
-                Box::new(G729Encoder::new())
-            }
+            CodecType::PCMA => Box::new(PcmaEncoder {}), // Alaw desteği
+            CodecType::G722 => Box::new(G722::new()),    // Wideband desteği
         }
     }
 
@@ -71,10 +67,8 @@ impl CodecFactory {
         match codec {
             CodecType::G729 => Box::new(G729Decoder::new()),
             CodecType::PCMU => Box::new(PcmuDecoder {}),
-            _ => {
-                tracing::error!("❌ [RTP] Unsupported/Unstable Decoder requested: {:?}. Fallback to G.729.", codec);
-                Box::new(G729Decoder::new())
-            }
+            CodecType::PCMA => Box::new(PcmaDecoder {}), // Alaw desteği
+            CodecType::G722 => Box::new(G722::new()),    // Wideband desteği
         }
     }
 }
