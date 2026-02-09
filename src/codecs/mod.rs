@@ -1,6 +1,6 @@
 // sentiric-rtp-core/src/codecs/mod.rs
 
-pub mod codec_data; // YENİ İSİM: g711_data yerine codec_data
+pub mod codec_data;
 pub mod g729;
 pub mod g722;
 pub mod pcma;
@@ -51,21 +51,30 @@ pub trait Decoder: Send {
 pub struct CodecFactory;
 
 impl CodecFactory {
+    /// [v1.3.3]: Stabil Kodek Yönetimi.
+    /// Sadece G.729 ve PCMU üretim ortamı için aktiftir.
     pub fn create_encoder(codec: CodecType) -> Box<dyn Encoder> {
         match codec {
-            CodecType::PCMA => Box::new(PcmaEncoder{}),
-            CodecType::PCMU => Box::new(PcmuEncoder{}),
             CodecType::G729 => Box::new(G729Encoder::new()),
-            CodecType::G722 => Box::new(G722::new()),
+            CodecType::PCMU => Box::new(PcmuEncoder {}),
+            
+            // Diğerleri için hata basıp G.729'a düşüyoruz.
+            // Bu, "Fail-Silent" değil "Fail-Safe" bir yaklaşımdır.
+            _ => {
+                tracing::error!("❌ [RTP] Unsupported/Unstable Encoder requested: {:?}. Fallback to G.729.", codec);
+                Box::new(G729Encoder::new())
+            }
         }
     }
 
     pub fn create_decoder(codec: CodecType) -> Box<dyn Decoder> {
         match codec {
-            CodecType::PCMA => Box::new(PcmaDecoder{}),
-            CodecType::PCMU => Box::new(PcmuDecoder{}),
             CodecType::G729 => Box::new(G729Decoder::new()),
-            CodecType::G722 => Box::new(G722::new()),
+            CodecType::PCMU => Box::new(PcmuDecoder {}),
+            _ => {
+                tracing::error!("❌ [RTP] Unsupported/Unstable Decoder requested: {:?}. Fallback to G.729.", codec);
+                Box::new(G729Decoder::new())
+            }
         }
     }
 }
