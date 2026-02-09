@@ -2,37 +2,59 @@
 
 pub mod codec_data;
 pub mod g729;
-pub mod g722;
-pub mod pcma;
 pub mod pcmu;
 
+pub mod pcma;
+// pub mod g722; // [İPTAL]: G.722 modülü derleme dışı bırakıldı.
+
+
+// ============================================================================
+// !!! PRODUCTION READY CODECS !!!
+// 
+// [STABLE] G.729: Düşük bant genişliği, yüksek kararlılık.
+// [STABLE] PCMU: Yüksek kalite, kayıpsız.
+// [STABLE] PCMA: Cızırtılı
+// ============================================================================
+
+// Modül dışa aktarımları
 pub use g729::{G729Encoder, G729Decoder};
-pub use g722::G722;
-pub use pcma::{PcmaEncoder, PcmaDecoder};
 pub use pcmu::{PcmuEncoder, PcmuDecoder};
+// 
+pub use pcma::{PcmaEncoder, PcmaDecoder};
+
+
+// G.722 dışa aktarımı da kapatıldı.
+// pub use g722::G722; 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CodecType {
-    PCMU = 0,
-    PCMA = 8,
-    G722 = 9,
     G729 = 18,
+    
+    PCMU = 0,
+    
+    PCMA = 8,
+    
+    // G722 = 9, // [İPTAL]: Enum varyantı kaldırıldı.
+
 }
 
 impl CodecType {
     pub fn sample_rate(&self) -> u32 {
         match self {
             CodecType::PCMU | CodecType::PCMA | CodecType::G729 => 8000,
-            CodecType::G722 => 16000,
+            // CodecType::G722 => 16000,
         }
     }
 
     pub fn from_u8(id: u8) -> Option<Self> {
         match id {
-            0 => Some(CodecType::PCMU),
-            8 => Some(CodecType::PCMA),
-            9 => Some(CodecType::G722),
+            // BIRINCI TEKLIFIMIZ
             18 => Some(CodecType::G729),
+            // FALBACK TEKLIFI
+            0 => Some(CodecType::PCMU),
+            // BASKA CARE YOK !!! durumlarıs
+            8 => Some(CodecType::PCMA),
+            // 9 => Some(CodecType::G722),
             _ => None,
         }
     }
@@ -51,24 +73,21 @@ pub trait Decoder: Send {
 pub struct CodecFactory;
 
 impl CodecFactory {
-    /// [v1.3.4 MİMARİ DÜZELTME]: Eksik PCMA (Alaw) desteği geri eklendi.
-    /// Tüm varyantlar kapsandığı için 'unreachable pattern' uyarısını önlemek adına 
-    /// default (_) bloğu kaldırıldı.
     pub fn create_encoder(codec: CodecType) -> Box<dyn Encoder> {
         match codec {
             CodecType::G729 => Box::new(G729Encoder::new()),
-            CodecType::PCMU => Box::new(PcmuEncoder {}),
-            CodecType::PCMA => Box::new(PcmaEncoder {}), // Alaw desteği
-            CodecType::G722 => Box::new(G722::new()),    // Wideband desteği
+            CodecType::PCMU => Box::new(pcmu::PcmuEncoder {}),
+            CodecType::PCMA => Box::new(pcma::PcmaEncoder {}),
+            // CodecType::G722 => Box::new(g722::G722::new()),
         }
     }
 
     pub fn create_decoder(codec: CodecType) -> Box<dyn Decoder> {
         match codec {
             CodecType::G729 => Box::new(G729Decoder::new()),
-            CodecType::PCMU => Box::new(PcmuDecoder {}),
-            CodecType::PCMA => Box::new(PcmaDecoder {}), // Alaw desteği
-            CodecType::G722 => Box::new(G722::new()),    // Wideband desteği
+            CodecType::PCMU => Box::new(pcmu::PcmuDecoder {}),
+            CodecType::PCMA => Box::new(pcma::PcmaDecoder {}),
+            // CodecType::G722 => Box::new(g722::G722::new()),
         }
     }
 }

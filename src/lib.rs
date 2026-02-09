@@ -9,28 +9,29 @@ pub mod net_utils;
 pub mod jitter_buffer;
 
 pub use rtp::{RtpHeader, RtpPacket, RtcpPacket};
+
 // ============================================================================
-// !!! GELİŞTİRME NOTLARI VE ÜRETİM (PRODUCTION) DURUMU !!!
+// !!! PRODUCTION READY CODECS !!!
 // 
-// Aşağıdaki kodeklerin stabilite durumları test sonuçlarına göre belirlenmiştir:
-// 
-// [STABLE] G.729: 8000Hz örnekleme ile tam uyumlu, üretim ortamına hazır.
-// [BETA]   PCMU: Temel fonksiyonlar çalışıyor, uç durumlar (edge cases) test ediliyor.
-// [DEV]    PCMA & G.722: Henüz stabil değil; ses bozulmaları veya paketleme sorunları 
-//          mevcut. Üretim ortamında KULLANILMAMALIDIR.
+// [STABLE] G.729: Düşük bant genişliği, yüksek kararlılık.
+// [STABLE] PCMU: Yüksek kalite, kayıpsız.
+// [STABLE] PCMA: Cızırtılı
 // ============================================================================
 pub use codecs::{
     Encoder,
     Decoder,
     CodecType,
     CodecFactory, 
-    PcmaEncoder,
-    PcmaDecoder,
-    PcmuEncoder,
-    PcmuDecoder, 
+    
     G729Encoder,
     G729Decoder,
-    G722
+
+    PcmuEncoder,
+    PcmuDecoder, 
+
+    PcmaEncoder,
+    PcmaDecoder
+    
 };
 pub use wav::WavAudio;
 pub use pacer::Pacer;

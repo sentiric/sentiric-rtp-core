@@ -91,3 +91,5 @@ fn test_g729_quality() {
     println!("  └─ Hesaplanan PSNR: {:.2} dB (Eşik: >{:.1} dB)", psnr, psnr_threshold);
     assert!(psnr > psnr_threshold, "{} PSNR değeri ({:.2} dB) eşiğin altında kaldı!", name, psnr);
 }
+
+// G.722 testi kaldırıldı.

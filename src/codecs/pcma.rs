@@ -1,4 +1,4 @@
-// src/codecs/pcma.rs
+// sentiric-rtp-core/src/codecs/pcma.rs
 
 use super::{Encoder, Decoder, CodecType};
 use super::codec_data::ALAW_TO_LINEAR_LUT;
@@ -7,60 +7,56 @@ pub struct PcmaEncoder;
 pub struct PcmaDecoder;
 
 impl PcmaEncoder {
-    // A-LAW ENCODER (Bitwise Shift Yöntemi - KESİN ÇÖZÜM)
-    // 16-bit PCM'i 12-bit A-law aralığına oturtmanın en temiz yolu.
+    // A-LAW ENCODER (ITU-T Standardı)
+    // 13-bit signed linear PCM -> 8-bit A-law
     pub fn linear_to_alaw(pcm_val: i16) -> u8 {
-        let mut pcm = pcm_val as i32;
+        let mut pcm = pcm_val;
         let mask;
 
-        // 1. İşaret Bitini Yönet (A-law: Pozitif=0xD5, Negatif=0x55)
+        // 1. İşaret Bitini Yönet (A-law: Pozitif=0xD5 ile XORlanır)
         if pcm >= 0 {
             mask = 0xD5;
         } else {
             mask = 0x55;
-            pcm = -pcm - 8; // Negatif offset
+            pcm = -pcm - 8;
         }
 
-        // 2. Sınırla ve Ölçekle (16-bit -> 12-bit)
-        // 16-bit veriyi sağa 4 bit kaydırarak 12-bit (0..4095) aralığına indiriyoruz.
-        // Bu işlem, önceki kodlardaki karmaşık matematik hatalarını ortadan kaldırır.
-        let val = pcm >> 4;
-        let mut effective = if val < 0 { 0 } else { val };
-        if effective > 0xFFF { effective = 0xFFF; } // 12-bit max
+        // 2. A-law sıkıştırma aralığına çek (MAX 32635)
+        if pcm > 32635 { pcm = 32635; }
 
-        // 3. Segment Bulma (G.711 Standart Tablosu)
-        let segment: i32;
-        let mantissa: i32;
-
-        if effective < 32 {
+        // 3. Segment ve Mantissa Hesabı
+        // A-law algoritması 13-bitlik veriyi (işaret hariç) kullanır.
+        let ival = pcm;
+        let segment: u8;
+        
+        if ival < 256 {
             segment = 0;
-            mantissa = (effective >> 1) & 0x0F;
-        } else if effective < 64 {
+        } else if ival < 512 {
             segment = 1;
-            mantissa = (effective >> 2) & 0x0F;
-        } else if effective < 128 {
+        } else if ival < 1024 {
             segment = 2;
-            mantissa = (effective >> 3) & 0x0F;
-        } else if effective < 256 {
+        } else if ival < 2048 {
             segment = 3;
-            mantissa = (effective >> 4) & 0x0F;
-        } else if effective < 512 {
+        } else if ival < 4096 {
             segment = 4;
-            mantissa = (effective >> 5) & 0x0F;
-        } else if effective < 1024 {
+        } else if ival < 8192 {
             segment = 5;
-            mantissa = (effective >> 6) & 0x0F;
-        } else if effective < 2048 {
+        } else if ival < 16384 {
             segment = 6;
-            mantissa = (effective >> 7) & 0x0F;
         } else {
             segment = 7;
-            mantissa = (effective >> 8) & 0x0F;
         }
 
-        // 4. Birleştir ve Maskele
-        let result = ((segment << 4) | mantissa) as u8;
-        result ^ mask
+        let mantissa = if segment < 1 {
+            (ival >> 4) & 0x0F
+        } else {
+            (ival >> (segment + 3)) & 0x0F
+        };
+
+        let val = (segment << 4) | (mantissa as u8);
+        
+        // 4. Standart A-law XOR Maskelemesi
+        val ^ mask
     }
 }
 

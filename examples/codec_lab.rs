@@ -1,3 +1,4 @@
+// examples/codec_lab.rs
 use sentiric_rtp_core::codecs::{CodecFactory, CodecType};
 use std::env;
 use std::fs::File;
@@ -29,7 +30,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {
         eprintln!("Kullanım: cargo run --example codec_lab -- <input.wav> <codec>");
-        eprintln!("Desteklenen codec'ler: pcma, pcmu, g729, g722");
+        eprintln!("Desteklenen codec'ler: pcma, pcmu, g729"); // G722 kaldırıldı
         std::process::exit(1);
     }
 
@@ -40,9 +41,9 @@ fn main() {
         "pcma" => CodecType::PCMA,
         "pcmu" => CodecType::PCMU,
         "g729" => CodecType::G729,
-        "g722" => CodecType::G722,
+        // "g722" => CodecType::G722, // Kaldırıldı
         _ => {
-            eprintln!("Hata: Geçersiz codec '{}'", codec_str);
+            eprintln!("Hata: Geçersiz veya desteklenmeyen codec '{}'", codec_str);
             std::process::exit(1);
         }
     };
@@ -59,7 +60,8 @@ fn main() {
         std::process::exit(1);
     }
     
-    if spec.sample_rate != 8000 && (codec_type == CodecType::PCMA || codec_type == CodecType::PCMU || codec_type == CodecType::G729) {
+    // G.729, PCMA, PCMU hepsi 8000Hz ister
+    if spec.sample_rate != 8000 {
         eprintln!("Uyarı: Bu kodek için 8000 Hz örnekleme hızı bekleniyor. Girdi: {} Hz", spec.sample_rate);
     }
 
@@ -85,7 +87,7 @@ fn main() {
     let output_filename = format!("output_{}.wav", codec_str);
     let out_spec = hound::WavSpec {
         channels: 1,
-        sample_rate: codec_type.sample_rate(), // G722 16k, diğerleri 8k döndürür
+        sample_rate: 8000, // Artık sadece 8k kodekler var
         bits_per_sample: 16,
         sample_format: hound::SampleFormat::Int,
     };
