@@ -3,58 +3,36 @@
 pub mod codec_data;
 pub mod g729;
 pub mod pcmu;
-
+// PCMA Cırıtlı
 pub mod pcma;
-// pub mod g722; // [İPTAL]: G.722 modülü derleme dışı bırakıldı.
 
-
-// ============================================================================
-// !!! PRODUCTION READY CODECS !!!
-// 
-// [STABLE] G.729: Düşük bant genişliği, yüksek kararlılık.
-// [STABLE] PCMU: Yüksek kalite, kayıpsız.
-// [STABLE] PCMA: Cızırtılı
-// ============================================================================
-
-// Modül dışa aktarımları
 pub use g729::{G729Encoder, G729Decoder};
 pub use pcmu::{PcmuEncoder, PcmuDecoder};
-// 
+// PCMA Cırıtlı
 pub use pcma::{PcmaEncoder, PcmaDecoder};
-
-
-// G.722 dışa aktarımı da kapatıldı.
-// pub use g722::G722; 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CodecType {
     G729 = 18,
-    
     PCMU = 0,
-    
     PCMA = 8,
-    
-    // G722 = 9, // [İPTAL]: Enum varyantı kaldırıldı.
-
+    /// RFC 4733/2833 DTMF Events (Payload 101)
+    TelephoneEvent = 101, 
 }
 
 impl CodecType {
     pub fn sample_rate(&self) -> u32 {
         match self {
-            CodecType::PCMU | CodecType::PCMA | CodecType::G729 => 8000,
-            // CodecType::G722 => 16000,
+            CodecType::PCMU | CodecType::PCMA | CodecType::G729 | CodecType::TelephoneEvent => 8000,
         }
     }
 
     pub fn from_u8(id: u8) -> Option<Self> {
         match id {
-            // BIRINCI TEKLIFIMIZ
             18 => Some(CodecType::G729),
-            // FALBACK TEKLIFI
             0 => Some(CodecType::PCMU),
-            // BASKA CARE YOK !!! durumlarıs
             8 => Some(CodecType::PCMA),
-            // 9 => Some(CodecType::G722),
+            101 => Some(CodecType::TelephoneEvent),
             _ => None,
         }
     }
@@ -70,6 +48,20 @@ pub trait Decoder: Send {
     fn get_type(&self) -> CodecType;
 }
 
+/// Boş Encoder (DTMF gibi ses olmayan türler için)
+pub struct NoOpEncoder;
+impl Encoder for NoOpEncoder {
+    fn encode(&mut self, _pcm: &[i16]) -> Vec<u8> { vec![] }
+    fn get_type(&self) -> CodecType { CodecType::TelephoneEvent }
+}
+
+/// Boş Decoder
+pub struct NoOpDecoder;
+impl Decoder for NoOpDecoder {
+    fn decode(&mut self, _payload: &[u8]) -> Vec<i16> { vec![] }
+    fn get_type(&self) -> CodecType { CodecType::TelephoneEvent }
+}
+
 pub struct CodecFactory;
 
 impl CodecFactory {
@@ -78,7 +70,7 @@ impl CodecFactory {
             CodecType::G729 => Box::new(G729Encoder::new()),
             CodecType::PCMU => Box::new(pcmu::PcmuEncoder {}),
             CodecType::PCMA => Box::new(pcma::PcmaEncoder {}),
-            // CodecType::G722 => Box::new(g722::G722::new()),
+            CodecType::TelephoneEvent => Box::new(NoOpEncoder {}),
         }
     }
 
@@ -87,7 +79,7 @@ impl CodecFactory {
             CodecType::G729 => Box::new(G729Decoder::new()),
             CodecType::PCMU => Box::new(pcmu::PcmuDecoder {}),
             CodecType::PCMA => Box::new(pcma::PcmaDecoder {}),
-            // CodecType::G722 => Box::new(g722::G722::new()),
+            CodecType::TelephoneEvent => Box::new(NoOpDecoder {}),
         }
     }
 }
