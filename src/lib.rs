@@ -7,6 +7,7 @@ pub mod pacer;
 pub mod session;
 pub mod net_utils;
 pub mod jitter_buffer;
+pub mod dsp; // YENİ EKLENDİ
 
 pub use rtp::{RtpHeader, RtpPacket, RtcpPacket};
 
@@ -37,3 +38,4 @@ pub use wav::WavAudio;
 pub use pacer::Pacer;
 pub use session::RtpEndpoint;
 pub use jitter_buffer::JitterBuffer;
+pub use dsp::Resampler; // YENİ EKLENDİ
