@@ -3,12 +3,10 @@
 pub mod codec_data;
 pub mod g729;
 pub mod pcmu;
-// PCMA Cırıtlı
 pub mod pcma;
 
 pub use g729::{G729Encoder, G729Decoder};
 pub use pcmu::{PcmuEncoder, PcmuDecoder};
-// PCMA Cırıtlı
 pub use pcma::{PcmaEncoder, PcmaDecoder};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +32,27 @@ impl CodecType {
             8 => Some(CodecType::PCMA),
             101 => Some(CodecType::TelephoneEvent),
             _ => None,
+        }
+    }
+
+    /// Belirtilen ptime (ms) için örnek (sample) sayısını döndürür.
+    /// Örn: 8000Hz * 20ms = 160 sample.
+    pub fn samples_per_frame(&self, ptime_ms: u8) -> usize {
+        let rate = self.sample_rate();
+        (rate as usize * ptime_ms as usize) / 1000
+    }
+
+    /// Belirtilen ptime (ms) için RTP payload boyutunu (byte) döndürür.
+    /// G.729 gibi sıkıştırılmış kodekler için bu hesap farklıdır.
+    pub fn payload_size_bytes(&self, ptime_ms: u8) -> usize {
+        match self {
+            // G.729: 10ms = 10 byte (8kbps). 20ms = 20 byte.
+            // Parantez uyarısı giderildi.
+            CodecType::G729 => ptime_ms as usize, 
+            // G.711 (PCMU/PCMA): 1 sample = 1 byte. 20ms = 160 byte.
+            CodecType::PCMU | CodecType::PCMA => self.samples_per_frame(ptime_ms),
+            // DTMF değişkendir, event packet genellikle 4 byte
+            CodecType::TelephoneEvent => 4, 
         }
     }
 }

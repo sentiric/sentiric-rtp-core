@@ -3,6 +3,7 @@ use crate::codecs::CodecType;
 
 /// Platform genelinde geçerli Medya Anayasası.
 /// Hangi kodeklerin, hangi sırayla ve hangi ayarlarla kullanılacağını belirler.
+#[derive(Clone, Debug)]
 pub struct AudioProfile {
     /// SDP'de teklif edilecek kodeklerin sıralı listesi (Öncelik sırasına göre).
     pub codecs: Vec<CodecConfig>,
@@ -25,7 +26,7 @@ impl Default for AudioProfile {
             ptime: 20, // Telekom standardı: 20ms paketler
             codecs: vec![
                 // --- SES KODEKLERİ ---
-                // 1. PCMU (En güvenli, en uyumlu)
+                // 1. PCMU (En güvenli, en uyumlu, düşük işlemci yükü)
                 CodecConfig {
                     codec: CodecType::PCMU,
                     payload_type: 0,
@@ -33,7 +34,7 @@ impl Default for AudioProfile {
                     rate: 8000,
                     fmtp: None,
                 },
-                // 2. G.729 (Bant genişliği dostu)
+                // 2. G.729 (Bant genişliği dostu, lisans gerektirmez - bcg729)
                 CodecConfig {
                     codec: CodecType::G729,
                     payload_type: 18,
