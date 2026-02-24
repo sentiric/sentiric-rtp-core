@@ -1,6 +1,6 @@
 [package]
 name = "sentiric-rtp-core"
-version = "1.5.0" # Major feature bump
+version = "1.5.1"
 edition = "2021"
 description = "High-precision RTP/RTCP engine with custom Cubic DSP."
 authors = ["Sentiric Team"]
