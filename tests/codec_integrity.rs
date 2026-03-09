@@ -93,3 +93,52 @@ fn test_g729_quality() {
 }
 
 // G.722 testi kaldırıldı.
+
+#[test]
+fn test_dsp_phase_continuity_no_crackle() {
+    use sentiric_rtp_core::dsp::AudioResampler;
+    
+    println!("\n--- [TEST BAŞLADI] DSP Faz Sürekliliği (Cızırtı Testi) ---");
+
+    // 16kHz'lik 1 saniyelik test sinyali üretelim
+    let original_16k = generate_sine_wave(440.0, 1000, 16000);
+    
+    // Motoru hazırlayalım (16kHz -> 8kHz dönüşüm)
+    let resampler_bulk = AudioResampler::new(16000, 8000, 0);
+    let resampler_chunked = AudioResampler::new(16000, 8000, 0);
+
+    // SENARYO 1: Tüm dosyayı TEK SEFERDE dönüştür (İdeal, pürüzsüz sonuç)
+    let output_bulk = resampler_bulk.process(&original_16k);
+
+    // SENARYO 2: Gerçek hayat senaryosu gibi 20ms'lik (320 sample) paketler halinde dönüştür
+    let mut output_chunked = Vec::new();
+    for chunk in original_16k.chunks(320) {
+        let processed_chunk = resampler_chunked.process(chunk);
+        output_chunked.extend(processed_chunk);
+    }
+
+    // MATEMATİKSEL KARŞILAŞTIRMA
+    // İki senaryo arasındaki farkların ortalamasını (Mean Absolute Error) al
+    let mut total_error = 0_i64;
+    let min_len = std::cmp::min(output_bulk.len(), output_chunked.len());
+    
+    for i in 0..min_len {
+        let diff = (output_bulk[i] as i64 - output_chunked[i] as i64).abs();
+        total_error += diff;
+    }
+
+    let average_error = total_error as f64 / min_len as f64;
+
+    println!("  └─ Toplam Çıktı Uzunluğu: {} örnek", min_len);
+    println!("  └─ Paket Sınırı Hata Payı (MAE): {:.2}", average_error);
+
+    // Eğer faz süreksizliği (eski bug) olsaydı, bu hata payı devasa çıkardı (1000+).
+    // Kabul edilebilir mikroskobik dalgalanma payı < 5.0 olmalıdır.
+    assert!(
+        average_error < 5.0, 
+        "HATA: Paket bazlı işlemede faz kopmaları tespit edildi (Cızırtı üretiyor)! MAE: {}", 
+        average_error
+    );
+    
+    println!("  ✅ DSP Motoru paket geçişlerinde faz kaybetmiyor (Cızırtı yok).");
+}

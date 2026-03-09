@@ -87,8 +87,8 @@ impl CodecFactory {
     pub fn create_encoder(codec: CodecType) -> Box<dyn Encoder> {
         match codec {
             CodecType::G729 => Box::new(G729Encoder::new()),
-            CodecType::PCMU => Box::new(pcmu::PcmuEncoder {}),
-            CodecType::PCMA => Box::new(pcma::PcmaEncoder {}),
+            CodecType::PCMU => Box::new(pcmu::PcmuEncoder::new()),
+            CodecType::PCMA => Box::new(pcma::PcmaEncoder::new()),
             CodecType::TelephoneEvent => Box::new(NoOpEncoder {}),
         }
     }
@@ -96,6 +96,7 @@ impl CodecFactory {
     pub fn create_decoder(codec: CodecType) -> Box<dyn Decoder> {
         match codec {
             CodecType::G729 => Box::new(G729Decoder::new()),
+            // Decoder'larda dither/state olmadığı için eskisi gibi kalabilir
             CodecType::PCMU => Box::new(pcmu::PcmuDecoder {}),
             CodecType::PCMA => Box::new(pcma::PcmaDecoder {}),
             CodecType::TelephoneEvent => Box::new(NoOpDecoder {}),
