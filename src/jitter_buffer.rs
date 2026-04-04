@@ -83,13 +83,13 @@ impl JitterBuffer {
         // beklenen paketi "kayıp" kabul edip atlamalıyız.
         if let Some(&next_available_seq) = self.buffer.keys().next() {
             let gap = next_available_seq.wrapping_sub(self.expected_seq);
-            
+
             // Eğer 5 paketten fazla boşluk varsa veya buffer %50 doluysa atla
             // Bu "Catch-up" (Yaklama) mantığıdır.
             if gap > 5 || self.buffer.len() > (self.max_capacity / 2) {
                 // Kayıp paketi atla
                 // İdealde burada Packet Loss Concealment (PLC) devreye girer.
-                self.expected_seq = next_available_seq; 
+                self.expected_seq = next_available_seq;
                 let packet = self.buffer.remove(&next_available_seq);
                 self.expected_seq = self.expected_seq.wrapping_add(1);
                 return packet;
@@ -103,7 +103,7 @@ impl JitterBuffer {
     /// paketin geç kalıp kalmadığını kontrol eder.
     fn is_late(&self, seq: u16) -> bool {
         const THRESHOLD: u16 = 30000;
-        
+
         if seq == self.expected_seq {
             return false;
         }
@@ -142,7 +142,7 @@ mod tests {
     fn test_jitter_buffer_reordering() {
         // 10 kapasite, 50ms gecikme
         let mut jb = JitterBuffer::new(10, 50);
-        
+
         // Paketleri karışık gönderiyoruz: 1, 3, 2
         jb.push(create_dummy_packet(1));
         jb.push(create_dummy_packet(3)); // Erken geldi (Out of order)
@@ -163,7 +163,7 @@ mod tests {
 
         let p3 = jb.pop().expect("Packet 3 should be available");
         assert_eq!(p3.header.sequence_number, 3);
-        
+
         // Buffer boş olmalı
         assert!(jb.pop().is_none());
     }
@@ -171,10 +171,10 @@ mod tests {
     #[test]
     fn test_loss_skip() {
         let mut jb = JitterBuffer::new(10, 10);
-        
+
         // 1. Paketi gönderdik
         jb.push(create_dummy_packet(100));
-        
+
         thread::sleep(Duration::from_millis(15));
         let _ = jb.pop(); // 100'ü aldık. Beklenen şimdi 101.
 
@@ -185,7 +185,7 @@ mod tests {
         // Jitter Buffer, 101'i bekliyor ama 106 var.
         // Boşluk (Gap) henüz 5'ten büyük değil ve buffer dolu değil, o yüzden bekler.
         // Ancak biz burada buffer doluluk testini tetiklemek için daha fazla paket basalım.
-        
+
         for i in 107..115 {
             jb.push(create_dummy_packet(i));
         }

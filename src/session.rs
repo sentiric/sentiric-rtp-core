@@ -2,7 +2,7 @@
 
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 /// RtpEndpoint: Dinamik hedef kilitlenme mantığı (Symmetric RTP).
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ impl RtpEndpoint {
         }
     }
 
-    /// Gelen paketin adresine kilitlenir. 
+    /// Gelen paketin adresine kilitlenir.
     /// Docker ve NAT senaryolarında Master otoritedir.
     pub fn latch(&self, source_addr: SocketAddr) -> bool {
         let mut latched = self.is_latched.lock().unwrap();

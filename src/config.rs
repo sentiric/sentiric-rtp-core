@@ -31,7 +31,6 @@ impl Default for AudioProfile {
         let mut profile = Self {
             ptime: 20, // Telekom standardı: 20ms paketler
             codecs: vec![
-                
                 // --- SES KODEKLERİ ---
 
                 // 1. G.729 (Bant genişliği dostu, lisans gerektirmez - bcg729)
@@ -42,7 +41,6 @@ impl Default for AudioProfile {
                     rate: 8000,
                     fmtp: Some("annexb=no"),
                 },
-
                 // 2. PCMU (En güvenli, en uyumlu, düşük işlemci yükü)
                 CodecConfig {
                     codec: CodecType::PCMU,
@@ -50,8 +48,7 @@ impl Default for AudioProfile {
                     name: "PCMU",
                     rate: 8000,
                     fmtp: None,
-                },   
-
+                },
                 // 3. PCMA (Avrupa standardı)
                 CodecConfig {
                     codec: CodecType::PCMA,
@@ -60,7 +57,6 @@ impl Default for AudioProfile {
                     rate: 8000,
                     fmtp: None,
                 },
-                
                 // --- SİNYAL KODEKLERİ ---
                 // 4. DTMF (Tuşlama)
                 CodecConfig {
@@ -86,7 +82,8 @@ impl Default for AudioProfile {
 impl AudioProfile {
     /// Tercih edilen birincil **SES** kodeğini döndürür (DTMF hariç).
     pub fn preferred_audio_codec(&self) -> CodecType {
-        self.codecs.iter()
+        self.codecs
+            .iter()
             .find(|c| c.codec != CodecType::TelephoneEvent) // DTMF'i atla
             .map(|c| c.codec)
             .unwrap_or(CodecType::PCMU) // Hiçbiri yoksa Fallback

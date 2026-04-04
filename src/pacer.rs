@@ -21,7 +21,7 @@ impl Pacer {
     #[inline(always)]
     pub fn wait(&mut self) {
         let now = Instant::now();
-        
+
         if now >= self.next_tick {
             // Eğer gecikme varsa, bir sonraki hedefi şimdiye göre ayarla
             self.next_tick = now + self.interval;

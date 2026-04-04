@@ -30,7 +30,10 @@ impl RtpHeader {
 
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(12);
-        let b0 = (self.version << 6) | ((self.padding as u8) << 5) | ((self.extension as u8) << 4) | (self.csrc_count & 0x0F);
+        let b0 = (self.version << 6)
+            | ((self.padding as u8) << 5)
+            | ((self.extension as u8) << 4)
+            | (self.csrc_count & 0x0F);
         let b1 = ((self.marker as u8) << 7) | (self.payload_type & 0x7F);
         bytes.push(b0);
         bytes.push(b1);
@@ -63,12 +66,12 @@ impl RtcpPacket {
     pub fn new_sender_report(ssrc: u32) -> Self {
         let mut bytes = Vec::with_capacity(8);
         bytes.push(0x80); // Version 2, Count 0
-        bytes.push(200);  // Type: Sender Report
+        bytes.push(200); // Type: Sender Report
         bytes.extend_from_slice(&1u16.to_be_bytes()); // Length
         bytes.extend_from_slice(&ssrc.to_be_bytes());
         Self { payload: bytes }
     }
-    
+
     pub fn to_bytes(&self) -> Vec<u8> {
         self.payload.clone()
     }

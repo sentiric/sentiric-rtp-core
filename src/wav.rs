@@ -15,12 +15,18 @@ impl WavAudio {
         file.read_to_end(&mut buffer)?;
 
         if buffer.len() < 12 {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Dosya çok küçük"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Dosya çok küçük",
+            ));
         }
 
         // RIFF Header Kontrolü
         if &buffer[0..4] != b"RIFF" || &buffer[8..12] != b"WAVE" {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "Geçersiz WAV formatı"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Geçersiz WAV formatı",
+            ));
         }
 
         let mut pos = 12;
@@ -28,9 +34,12 @@ impl WavAudio {
         let mut audio_data_len = 0;
 
         while pos + 8 < buffer.len() {
-            let chunk_id = &buffer[pos..pos+4];
+            let chunk_id = &buffer[pos..pos + 4];
             let chunk_size = u32::from_le_bytes([
-                buffer[pos+4], buffer[pos+5], buffer[pos+6], buffer[pos+7]
+                buffer[pos + 4],
+                buffer[pos + 5],
+                buffer[pos + 6],
+                buffer[pos + 7],
             ]) as usize;
 
             // Güvenlik: Chunk size mantıksız büyükse dur
@@ -57,7 +66,10 @@ impl WavAudio {
                 audio_data_start = 44;
                 audio_data_len = buffer.len() - 44;
             } else {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, "Ses verisi bulunamadı"));
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "Ses verisi bulunamadı",
+                ));
             }
         }
 

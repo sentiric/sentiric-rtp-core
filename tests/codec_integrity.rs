@@ -18,14 +18,18 @@ fn generate_sine_wave(freq: f64, duration_ms: u32, sample_rate: u32) -> Vec<i16>
 
 fn calculate_psnr(original: &[i16], processed: &[i16]) -> f64 {
     let min_len = std::cmp::min(original.len(), processed.len());
-    if min_len == 0 { return 0.0; }
+    if min_len == 0 {
+        return 0.0;
+    }
     let mut sum_sq_diff = 0.0;
     for i in 0..min_len {
         let diff = original[i] as f64 - processed[i] as f64;
         sum_sq_diff += diff * diff;
     }
     let mse = sum_sq_diff / min_len as f64;
-    if mse < 1e-10 { return 100.0; }
+    if mse < 1e-10 {
+        return 100.0;
+    }
     let max_val = 32767.0;
     20.0 * (max_val / mse.sqrt()).log10()
 }
@@ -47,8 +51,16 @@ fn test_pcma_quality() {
     let decoded = decoder.decode(&encoded);
     let psnr = calculate_psnr(&original_pcm, &decoded);
 
-    println!("  └─ Hesaplanan PSNR: {:.2} dB (Eşik: >{:.1} dB)", psnr, psnr_threshold);
-    assert!(psnr > psnr_threshold, "{} PSNR değeri ({:.2} dB) eşiğin altında kaldı!", name, psnr);
+    println!(
+        "  └─ Hesaplanan PSNR: {:.2} dB (Eşik: >{:.1} dB)",
+        psnr, psnr_threshold
+    );
+    assert!(
+        psnr > psnr_threshold,
+        "{} PSNR değeri ({:.2} dB) eşiğin altında kaldı!",
+        name,
+        psnr
+    );
 }
 
 #[test]
@@ -66,8 +78,16 @@ fn test_pcmu_quality() {
     let decoded = decoder.decode(&encoded);
     let psnr = calculate_psnr(&original_pcm, &decoded);
 
-    println!("  └─ Hesaplanan PSNR: {:.2} dB (Eşik: >{:.1} dB)", psnr, psnr_threshold);
-    assert!(psnr > psnr_threshold, "{} PSNR değeri ({:.2} dB) eşiğin altında kaldı!", name, psnr);
+    println!(
+        "  └─ Hesaplanan PSNR: {:.2} dB (Eşik: >{:.1} dB)",
+        psnr, psnr_threshold
+    );
+    assert!(
+        psnr > psnr_threshold,
+        "{} PSNR değeri ({:.2} dB) eşiğin altında kaldı!",
+        name,
+        psnr
+    );
 }
 
 #[test]
@@ -88,8 +108,16 @@ fn test_g729_quality() {
     let decoded = decoder.decode(&encoded);
     let psnr = calculate_psnr(g729_pcm_slice, &decoded);
 
-    println!("  └─ Hesaplanan PSNR: {:.2} dB (Eşik: >{:.1} dB)", psnr, psnr_threshold);
-    assert!(psnr > psnr_threshold, "{} PSNR değeri ({:.2} dB) eşiğin altında kaldı!", name, psnr);
+    println!(
+        "  └─ Hesaplanan PSNR: {:.2} dB (Eşik: >{:.1} dB)",
+        psnr, psnr_threshold
+    );
+    assert!(
+        psnr > psnr_threshold,
+        "{} PSNR değeri ({:.2} dB) eşiğin altında kaldı!",
+        name,
+        psnr
+    );
 }
 
 // G.722 testi kaldırıldı.
@@ -97,12 +125,12 @@ fn test_g729_quality() {
 #[test]
 fn test_dsp_phase_continuity_no_crackle() {
     use sentiric_rtp_core::dsp::AudioResampler;
-    
+
     println!("\n--- [TEST BAŞLADI] DSP Faz Sürekliliği (Cızırtı Testi) ---");
 
     // 16kHz'lik 1 saniyelik test sinyali üretelim
     let original_16k = generate_sine_wave(440.0, 1000, 16000);
-    
+
     // Motoru hazırlayalım (16kHz -> 8kHz dönüşüm)
     let resampler_bulk = AudioResampler::new(16000, 8000, 0);
     let resampler_chunked = AudioResampler::new(16000, 8000, 0);
@@ -121,7 +149,7 @@ fn test_dsp_phase_continuity_no_crackle() {
     // İki senaryo arasındaki farkların ortalamasını (Mean Absolute Error) al
     let mut total_error = 0_i64;
     let min_len = std::cmp::min(output_bulk.len(), output_chunked.len());
-    
+
     for i in 0..min_len {
         let diff = (output_bulk[i] as i64 - output_chunked[i] as i64).abs();
         total_error += diff;
@@ -135,10 +163,10 @@ fn test_dsp_phase_continuity_no_crackle() {
     // Eğer faz süreksizliği (eski bug) olsaydı, bu hata payı devasa çıkardı (1000+).
     // Kabul edilebilir mikroskobik dalgalanma payı < 5.0 olmalıdır.
     assert!(
-        average_error < 5.0, 
-        "HATA: Paket bazlı işlemede faz kopmaları tespit edildi (Cızırtı üretiyor)! MAE: {}", 
+        average_error < 5.0,
+        "HATA: Paket bazlı işlemede faz kopmaları tespit edildi (Cızırtı üretiyor)! MAE: {}",
         average_error
     );
-    
+
     println!("  ✅ DSP Motoru paket geçişlerinde faz kaybetmiyor (Cızırtı yok).");
 }

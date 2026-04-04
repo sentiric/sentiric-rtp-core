@@ -38,7 +38,10 @@ fn main() {
     }
 
     if file_count == 0 {
-        panic!("HATA: bcg729 kaynak kodları bulunamadı! Yol: {}", bcg729_src.display());
+        panic!(
+            "HATA: bcg729 kaynak kodları bulunamadı! Yol: {}",
+            bcg729_src.display()
+        );
     }
 
     // 3. Derleme (Static Linking)

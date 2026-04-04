@@ -2,12 +2,12 @@
 
 pub mod codec_data;
 pub mod g729;
-pub mod pcmu;
 pub mod pcma;
+pub mod pcmu;
 
-pub use g729::{G729Encoder, G729Decoder};
-pub use pcmu::{PcmuEncoder, PcmuDecoder};
-pub use pcma::{PcmaEncoder, PcmaDecoder};
+pub use g729::{G729Decoder, G729Encoder};
+pub use pcma::{PcmaDecoder, PcmaEncoder};
+pub use pcmu::{PcmuDecoder, PcmuEncoder};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CodecType {
@@ -15,7 +15,7 @@ pub enum CodecType {
     PCMU = 0,
     PCMA = 8,
     /// RFC 4733/2833 DTMF Events (Payload 101)
-    TelephoneEvent = 101, 
+    TelephoneEvent = 101,
 }
 
 impl CodecType {
@@ -48,11 +48,11 @@ impl CodecType {
         match self {
             // G.729: 10ms = 10 byte (8kbps). 20ms = 20 byte.
             // Parantez uyarısı giderildi.
-            CodecType::G729 => ptime_ms as usize, 
+            CodecType::G729 => ptime_ms as usize,
             // G.711 (PCMU/PCMA): 1 sample = 1 byte. 20ms = 160 byte.
             CodecType::PCMU | CodecType::PCMA => self.samples_per_frame(ptime_ms),
             // DTMF değişkendir, event packet genellikle 4 byte
-            CodecType::TelephoneEvent => 4, 
+            CodecType::TelephoneEvent => 4,
         }
     }
 }
@@ -70,15 +70,23 @@ pub trait Decoder: Send {
 /// Boş Encoder (DTMF gibi ses olmayan türler için)
 pub struct NoOpEncoder;
 impl Encoder for NoOpEncoder {
-    fn encode(&mut self, _pcm: &[i16]) -> Vec<u8> { vec![] }
-    fn get_type(&self) -> CodecType { CodecType::TelephoneEvent }
+    fn encode(&mut self, _pcm: &[i16]) -> Vec<u8> {
+        vec![]
+    }
+    fn get_type(&self) -> CodecType {
+        CodecType::TelephoneEvent
+    }
 }
 
 /// Boş Decoder
 pub struct NoOpDecoder;
 impl Decoder for NoOpDecoder {
-    fn decode(&mut self, _payload: &[u8]) -> Vec<i16> { vec![] }
-    fn get_type(&self) -> CodecType { CodecType::TelephoneEvent }
+    fn decode(&mut self, _payload: &[u8]) -> Vec<i16> {
+        vec![]
+    }
+    fn get_type(&self) -> CodecType {
+        CodecType::TelephoneEvent
+    }
 }
 
 pub struct CodecFactory;

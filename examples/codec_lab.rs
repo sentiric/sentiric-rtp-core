@@ -55,17 +55,26 @@ fn main() {
     let reader = hound::WavReader::open(input_path).expect("WAV dosyası okunamadı.");
     let spec = reader.spec();
 
-    if spec.channels != 1 || spec.bits_per_sample != 16 || spec.sample_format != hound::SampleFormat::Int {
+    if spec.channels != 1
+        || spec.bits_per_sample != 16
+        || spec.sample_format != hound::SampleFormat::Int
+    {
         eprintln!("Hata: WAV dosyası 16-bit, mono, PCM formatında olmalıdır.");
         std::process::exit(1);
     }
-    
+
     // G.729, PCMA, PCMU hepsi 8000Hz ister
     if spec.sample_rate != 8000 {
-        eprintln!("Uyarı: Bu kodek için 8000 Hz örnekleme hızı bekleniyor. Girdi: {} Hz", spec.sample_rate);
+        eprintln!(
+            "Uyarı: Bu kodek için 8000 Hz örnekleme hızı bekleniyor. Girdi: {} Hz",
+            spec.sample_rate
+        );
     }
 
-    let original_samples: Vec<i16> = reader.into_samples::<i16>().collect::<Result<_, _>>().unwrap();
+    let original_samples: Vec<i16> = reader
+        .into_samples::<i16>()
+        .collect::<Result<_, _>>()
+        .unwrap();
 
     let mut encoder = CodecFactory::create_encoder(codec_type);
     let mut decoder = CodecFactory::create_decoder(codec_type);
@@ -77,13 +86,13 @@ fn main() {
     let original_size = original_samples.len() * 2; // 16 bit = 2 byte
     let encoded_size = encoded_payload.len();
     let compression_ratio = original_size as f64 / encoded_size as f64;
-    
+
     println!("\n📊 Analiz Sonuçları:");
     println!("├─ Orijinal Boyut   : {} bytes", original_size);
     println!("├─ Sıkıştırılmış Boyut: {} bytes", encoded_size);
     println!("├─ Sıkıştırma Oranı  : {:.2}:1", compression_ratio);
     println!("└─ Kalite (PSNR)    : {:.2} dB", psnr);
-    
+
     let output_filename = format!("output_{}.wav", codec_str);
     let out_spec = hound::WavSpec {
         channels: 1,
@@ -96,11 +105,14 @@ fn main() {
     let file = File::create(path).expect("Çıktı dosyası oluşturulamadı.");
     let writer = BufWriter::new(file);
     let mut wav_writer = hound::WavWriter::new(writer, out_spec).unwrap();
-    
+
     for sample in decoded_samples {
         wav_writer.write_sample(sample).unwrap();
     }
     wav_writer.finalize().unwrap();
 
-    println!("\n✅ Başarılı: İşlenmiş ses '{}' dosyasına kaydedildi.", output_filename);
+    println!(
+        "\n✅ Başarılı: İşlenmiş ses '{}' dosyasına kaydedildi.",
+        output_filename
+    );
 }
