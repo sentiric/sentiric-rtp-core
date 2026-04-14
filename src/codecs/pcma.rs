@@ -6,6 +6,12 @@ use super::{CodecType, Decoder, Encoder};
 pub struct PcmaEncoder;
 pub struct PcmaDecoder;
 
+impl Default for PcmaEncoder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PcmaEncoder {
     pub fn new() -> Self {
         Self {}

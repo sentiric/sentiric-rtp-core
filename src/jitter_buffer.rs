@@ -110,10 +110,10 @@ impl JitterBuffer {
 
         if seq < self.expected_seq {
             // Eğer fark çok büyükse wrap-around olmuştur, yani paket yenidir.
-            return self.expected_seq - seq < THRESHOLD;
+            self.expected_seq - seq < THRESHOLD
         } else {
             // Eğer fark çok büyükse (örn: beklenen 0, gelen 65000), paket eskidir.
-            return seq - self.expected_seq > THRESHOLD;
+            seq - self.expected_seq > THRESHOLD
         }
     }
 

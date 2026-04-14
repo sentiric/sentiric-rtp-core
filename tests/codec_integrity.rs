@@ -131,9 +131,10 @@ fn test_dsp_phase_continuity_no_crackle() {
     // 16kHz'lik 1 saniyelik test sinyali üretelim
     let original_16k = generate_sine_wave(440.0, 1000, 16000);
 
+    // [ARCH-COMPLIANCE FIX] Lock-free State Mutation için nesneler 'mut' olarak tanımlandı.
     // Motoru hazırlayalım (16kHz -> 8kHz dönüşüm)
-    let resampler_bulk = AudioResampler::new(16000, 8000, 0);
-    let resampler_chunked = AudioResampler::new(16000, 8000, 0);
+    let mut resampler_bulk = AudioResampler::new(16000, 8000, 0);
+    let mut resampler_chunked = AudioResampler::new(16000, 8000, 0);
 
     // SENARYO 1: Tüm dosyayı TEK SEFERDE dönüştür (İdeal, pürüzsüz sonuç)
     let output_bulk = resampler_bulk.process(&original_16k);

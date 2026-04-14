@@ -1,16 +1,9 @@
 // sentiric-rtp-core/src/dsp.rs
 
-use std::sync::{Arc, Mutex};
-
 /// Profesyonel Ses İşleme Motoru.
 /// Özellikler: Cubic Interpolation, Stateful Anti-Aliasing, 300Hz High-Pass Filter, Noise Gate.
+/// [ARCH-COMPLIANCE] Zero-Cost Abstraction: Mutex ve Arc kaldırılarak Lock Contention engellendi.
 pub struct AudioResampler {
-    state: Arc<Mutex<ResamplerState>>,
-    input_rate: usize,
-    output_rate: usize,
-}
-
-struct ResamplerState {
     history: Vec<f32>,
     fractional_phase: f32,
     fir_history: [i16; 4],
@@ -19,20 +12,20 @@ struct ResamplerState {
     hpf_x2: f32,
     hpf_y1: f32,
     hpf_y2: f32,
+    input_rate: usize,
+    output_rate: usize,
 }
 
 impl AudioResampler {
     pub fn new(input_rate: usize, output_rate: usize, _chunk_size: usize) -> Self {
         Self {
-            state: Arc::new(Mutex::new(ResamplerState {
-                history: vec![0.0; 4],
-                fractional_phase: 0.0,
-                fir_history: [0; 4],
-                hpf_x1: 0.0,
-                hpf_x2: 0.0,
-                hpf_y1: 0.0,
-                hpf_y2: 0.0,
-            })),
+            history: vec![0.0; 4],
+            fractional_phase: 0.0,
+            fir_history: [0; 4],
+            hpf_x1: 0.0,
+            hpf_x2: 0.0,
+            hpf_y1: 0.0,
+            hpf_y2: 0.0,
             input_rate,
             output_rate,
         }
@@ -40,22 +33,23 @@ impl AudioResampler {
 
     /// 300Hz High-Pass Filter (Butterworth IIR)
     /// G.711'in cızırtı yapmasına neden olan bas frekansları ve DC kaymasını temizler.
-    fn apply_hpf(sample: f32, s: &mut ResamplerState) -> f32 {
+    fn apply_hpf(&mut self, sample: f32) -> f32 {
         let b0 = 0.8413;
         let b1 = -1.6826;
         let b2 = 0.8413;
         let a1 = -1.6380;
         let a2 = 0.7272;
-        let out = b0 * sample + b1 * s.hpf_x1 + b2 * s.hpf_x2 - a1 * s.hpf_y1 - a2 * s.hpf_y2;
-        s.hpf_x2 = s.hpf_x1;
-        s.hpf_x1 = sample;
-        s.hpf_y2 = s.hpf_y1;
-        s.hpf_y1 = out;
+        let out =
+            b0 * sample + b1 * self.hpf_x1 + b2 * self.hpf_x2 - a1 * self.hpf_y1 - a2 * self.hpf_y2;
+        self.hpf_x2 = self.hpf_x1;
+        self.hpf_x1 = sample;
+        self.hpf_y2 = self.hpf_y1;
+        self.hpf_y1 = out;
         out
     }
 
     /// Stateful Anti-Aliasing FIR Filtresi
-    fn apply_anti_aliasing(input: &[i16], state: &mut ResamplerState) -> Vec<f32> {
+    fn apply_anti_aliasing(&mut self, input: &[i16]) -> Vec<f32> {
         let mut filtered = Vec::with_capacity(input.len());
         let coeffs = [-0.05, 0.25, 0.60, 0.25, -0.05];
         for i in 0..input.len() {
@@ -64,35 +58,36 @@ impl AudioResampler {
                 let val = if i >= j {
                     input[i - j]
                 } else {
-                    state.fir_history[4 - (j - i)]
+                    self.fir_history[4 - (j - i)]
                 };
                 sum += val as f32 * coeffs[j];
             }
             filtered.push(sum);
         }
         if input.len() >= 4 {
-            state.fir_history.copy_from_slice(&input[input.len() - 4..]);
+            self.fir_history.copy_from_slice(&input[input.len() - 4..]);
         }
         filtered
     }
 
-    pub fn process(&self, input: &[i16]) -> Vec<i16> {
+    // [ARCH-COMPLIANCE] &self yerine &mut self alarak state mutasyonunu güvenli ve lock-free hale getirdik.
+    pub fn process(&mut self, input: &[i16]) -> Vec<i16> {
         if self.input_rate == self.output_rate {
             return input.to_vec();
         }
-        let mut state = self.state.lock().unwrap();
+
         let ratio = self.output_rate as f32 / self.input_rate as f32;
 
         let processed_input = if self.output_rate < self.input_rate {
-            Self::apply_anti_aliasing(input, &mut state)
+            self.apply_anti_aliasing(input)
         } else {
             input.iter().map(|&s| s as f32).collect()
         };
 
-        let mut stream = state.history.clone();
+        let mut stream = self.history.clone();
         stream.extend(processed_input);
         if stream.len() >= 4 {
-            state.history = stream[stream.len() - 4..].to_vec();
+            self.history = stream[stream.len() - 4..].to_vec();
         }
         if let Some(&last) = stream.last() {
             stream.push(last);
@@ -100,7 +95,7 @@ impl AudioResampler {
         }
 
         let mut output = Vec::with_capacity((input.len() as f32 * ratio).ceil() as usize);
-        let mut input_index = state.fractional_phase;
+        let mut input_index = self.fractional_phase;
 
         while input_index < (input.len() as f32) {
             let virtual_idx = input_index + 2.0;
@@ -113,14 +108,14 @@ impl AudioResampler {
                 cubic_interp(stream[i], stream[i + 1], stream[i + 2], stream[i + 3], t);
 
             // HPF Uygula
-            let filtered = Self::apply_hpf(interpolated, &mut state);
+            let filtered = self.apply_hpf(interpolated);
 
             // Noise Gate (Kelime arası sessizleştirme)
             let final_sample = if filtered.abs() < 30.0 { 0.0 } else { filtered };
             output.push(final_sample.clamp(-32768.0, 32767.0) as i16);
             input_index += 1.0 / ratio;
         }
-        state.fractional_phase = input_index - input.len() as f32;
+        self.fractional_phase = input_index - input.len() as f32;
         output
     }
 }

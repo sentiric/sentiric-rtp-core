@@ -8,8 +8,8 @@
 // ============================================================================
 
 use super::{Encoder, Decoder, CodecType};
-use super::pcmu::PcmuEncoder; 
-use super::codec_data::ULAW_TO_LINEAR_LUT; 
+use super::pcmu::PcmuEncoder;
+use super::codec_data::ULAW_TO_LINEAR_LUT;
 
 pub struct G722;
 
@@ -19,7 +19,7 @@ impl G722 {
     }
 
     // --- Simülasyon Yardımcıları ---
-    
+
     // Encode: Linear PCM -> Simulated 4-bit Nibble
     // Bu, G.711'in 8-bit çıktısını alıp 4-bit'e sıkıştıran daha iyi bir quantizer.
     fn encode_nibble(sample: i16) -> u8 {
@@ -54,11 +54,11 @@ impl Encoder for G722 {
         }
 
         let mut output = Vec::with_capacity(wideband_samples.len() / 2); // 2 adet 4-bit nibble = 1 byte
-        
+
         for chunk in wideband_samples.chunks(2) {
             // chunk[0] = s1 (first sample), chunk[1] = s2 (second sample)
             let s1 = chunk[0];
-            let s2 = chunk[1]; 
+            let s2 = chunk[1];
 
             let n1 = Self::encode_nibble(s1);
             let n2 = Self::encode_nibble(s2);

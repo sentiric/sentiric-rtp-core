@@ -6,6 +6,12 @@ use super::{CodecType, Decoder, Encoder};
 pub struct PcmuEncoder;
 pub struct PcmuDecoder;
 
+impl Default for PcmuEncoder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PcmuEncoder {
     pub fn new() -> Self {
         Self {}

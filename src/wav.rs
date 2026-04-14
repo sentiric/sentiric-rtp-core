@@ -55,7 +55,7 @@ impl WavAudio {
 
             // RIFF Alignment Fix:
             // Eğer chunk size tek sayı ise, +1 padding byte atla.
-            let padding = if chunk_size % 2 != 0 { 1 } else { 0 };
+            let padding = if !chunk_size.is_multiple_of(2) { 1 } else { 0 };
             pos += 8 + chunk_size + padding;
         }
 

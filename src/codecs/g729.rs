@@ -32,6 +32,12 @@ pub struct G729Encoder {
     context: *mut c_void,
 }
 
+impl Default for G729Encoder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl G729Encoder {
     pub fn new() -> Self {
         unsafe {
@@ -86,6 +92,12 @@ impl Encoder for G729Encoder {
 // --- DECODER ---
 pub struct G729Decoder {
     context: *mut c_void,
+}
+
+impl Default for G729Decoder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl G729Decoder {

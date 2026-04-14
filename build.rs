@@ -14,7 +14,7 @@ fn main() {
         // Build sırasında uyarı ver ve indirmeyi dene
         println!("cargo:warning=bcg729 submodule içeriği boş. İndiriliyor...");
         let status = Command::new("git")
-            .args(&["submodule", "update", "--init", "--recursive"])
+            .args(["submodule", "update", "--init", "--recursive"])
             .current_dir(&root)
             .status();
 
